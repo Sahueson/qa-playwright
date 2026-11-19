@@ -51,12 +51,10 @@ export const test = base.extend<Fixtures>({
       await app.goto();
       await app.login(user.email, password);
       await expect(app.loginButton).toBeHidden();
-      // BUG de la app (19-nov-2026, pendiente): tras el login carga todos los datos DOS veces
-      // (la 2ª ~1,4 s después) y loadCloudData escribe en pantalla lo leído aunque entre medias
-      // el usuario haya guardado un cambio -> el cambio "desaparece" de la UI (en BD sí está).
-      // Para que los tests de funcionalidad no dependan de esa carrera, se espera a que la app
-      // lleve 1,5 s sin hacer peticiones (el networkidle de 500 ms se adelanta a la 2ª carga).
-      await app.waitForQuietNetwork();
+      // Sin esperas extra a propósito: la app cargaba los datos dos veces tras el login y la 2ª
+      // carga pisaba cambios recién guardados (bug corregido en cbf909b). Si vuelve, TC-B02/B02b
+      // lo detectan.
+      await app.page.waitForLoadState("networkidle");
       return user;
     });
   },
