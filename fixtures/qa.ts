@@ -11,6 +11,14 @@ export type UserKey =
   | "superadmin" | "admin_mad" | "admin_foe" | "junta2"
   | "player_foe" | "player_mad" | "blocked" | "sinequipo";
 
+// Vuelve a dejar el staging como el seed. La ejecución ya tiene la reserva (global-setup), así
+// que es seguro: úsalo en beforeAll de las suites cuyos datos dependen de otras (p. ej. el %
+// de asistencia cambia si la suite B cancela una partida "contando asistencia").
+export async function resetStaging() {
+  const { reset } = require(path.resolve(__dirname, "../shared/reset-staging/reset.js"));
+  await reset({ log: () => {} });
+}
+
 export function qaUser(key: UserKey): QaUser {
   const user = users.find((u) => u.key === key);
   if (!user) throw new Error(`Usuario QA desconocido: ${key}`);

@@ -57,8 +57,41 @@ export class AppPage {
 
   async openEvent(title: string) {
     await this.openTab("Partidas");
+    // El modal recarga los datos al abrirse (loadCloudData) y esa recarga reinicia el borrador
+    // de asistencia: marcar casillas antes de que termine las pierde (bug reportado, 19-nov).
+    // Se espera a la respuesta de esa recarga y luego a que la red quede en reposo.
+    const reload = this.page.waitForResponse(
+      (r) => r.url().includes("/rest/v1/event_registrations") && r.request().method() === "GET",
+      { timeout: 15_000 },
+    );
     await this.eventCard(title).locator(".tactical-btn--blue").click();
     await expect(this.modal.getByRole("heading", { name: "Detalle de partida" })).toBeVisible();
+    await reload;
+    await this.page.waitForLoadState("networkidle");
+  }
+
+  // ---------- Jugadores ----------
+  playerCard(nickname: string) {
+    return this.page.locator(".tactical-card").filter({
+      has: this.page.getByRole("heading", { name: nickname, exact: true }),
+    });
+  }
+
+  // Bloque de asistencia de la ficha: "Asistencia 2026 · 60% (1,5/2,5)" + "Cumple mínimo...".
+  attendanceOf(nickname: string) {
+    return this.playerCard(nickname)
+      .locator(".roster-card__label", { hasText: /^Asistencia \d{4}/ })
+      .locator("xpath=..");
+  }
+
+  async openLeavesPanel() {
+    await this.openTab("Jugadores");
+    await this.page.getByRole("button", { name: /^Excedencias FOE/ }).click();
+  }
+
+  // Fila de la lista de excedencias, por su motivo: <fila><info><motivo/></info><botones/></fila>.
+  leaveRow(reason: string) {
+    return this.page.getByText(reason, { exact: true }).locator("xpath=../..");
   }
 
   // ---------- FOE · Votos y Faltas ----------
