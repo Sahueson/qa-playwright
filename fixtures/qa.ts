@@ -1,4 +1,5 @@
 import { test as base, expect } from "@playwright/test";
+import * as fs from "fs";
 import * as path from "path";
 import { AppPage } from "../pages/app-page";
 
@@ -17,12 +18,27 @@ export function qaUser(key: UserKey): QaUser {
 }
 
 type Fixtures = {
+  // Automático: captura JPEG de la pantalla al terminar cada test (pase o falle). Es la única
+  // evidencia que se publica: nunca trazas ni vídeos, que llevan la contraseña QA y tokens.
+  evidence: void;
   app: AppPage;
   // Entra con un usuario QA y anota su rol en el resultado (columna "role" de la web).
   loginAs: (key: UserKey) => Promise<QaUser>;
 };
 
 export const test = base.extend<Fixtures>({
+  evidence: [
+    async ({ page }, use, testInfo) => {
+      await use();
+      const file = testInfo.outputPath("evidencia.jpg");
+      await page.screenshot({ path: file, type: "jpeg", quality: 60 }).catch(() => {});
+      if (fs.existsSync(file)) {
+        await testInfo.attach("evidencia", { path: file, contentType: "image/jpeg" });
+        fs.unlinkSync(file); // attach() ya la ha copiado a los adjuntos del test
+      }
+    },
+    { auto: true },
+  ],
   app: async ({ page }, use) => {
     await use(new AppPage(page));
   },

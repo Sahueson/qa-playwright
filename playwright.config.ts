@@ -31,8 +31,10 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     baseURL: process.env.BASE_URL,
+    /* Las trazas se quedan en local/CI (llevan la contraseña QA); la captura de evidencia la hace
+       fixtures/qa.ts en JPEG para cada test. */
     trace: 'retain-on-failure',
-    screenshot: 'only-on-failure',
+    screenshot: 'off',
   },
 
   /* Configure projects for major browsers */

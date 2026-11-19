@@ -52,12 +52,12 @@ jobs:
 
       # Solo capturas: las trazas incluyen las peticiones de login (contraseña QA y tokens)
       # y los artefactos de un repo público los puede descargar cualquiera.
-      - name: Capturas de los tests fallidos
+      - name: Capturas de los tests
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: capturas-${{ inputs.suite }}
-          path: test-results/**/*.png
+          path: test-results/**/*.jpg
           if-no-files-found: ignore
           retention-days: 7
 
