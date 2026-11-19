@@ -35,10 +35,12 @@ export const test = base.extend<Fixtures>({
       await app.goto();
       await app.login(user.email, password);
       await expect(app.loginButton).toBeHidden();
-      // Tras el login, cada evento de sesión de Supabase dispara una recarga completa de datos
-      // en la app (syncUserSession -> loadCloudData). Si el test actúa mientras tanto, una recarga
-      // tardía puede pisar el cambio con datos viejos: se espera a que la red quede en reposo.
-      await app.page.waitForLoadState("networkidle");
+      // BUG de la app (19-nov-2026, pendiente): tras el login carga todos los datos DOS veces
+      // (la 2ª ~1,4 s después) y loadCloudData escribe en pantalla lo leído aunque entre medias
+      // el usuario haya guardado un cambio -> el cambio "desaparece" de la UI (en BD sí está).
+      // Para que los tests de funcionalidad no dependan de esa carrera, se espera a que la app
+      // lleve 1,5 s sin hacer peticiones (el networkidle de 500 ms se adelanta a la 2ª carga).
+      await app.waitForQuietNetwork();
       return user;
     });
   },

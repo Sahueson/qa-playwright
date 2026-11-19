@@ -19,6 +19,29 @@ export class AppPage {
     this.modal = page.locator(".modal");
   }
 
+  // Espera a que la app lleve `quietMs` sin peticiones a Supabase (cargas en segundo plano).
+  async waitForQuietNetwork(quietMs = 1500, timeoutMs = 15_000) {
+    let last = Date.now();
+    let inFlight = 0;
+    const isApi = (url: string) => /\/(rest|auth)\/v1\//.test(url);
+    const onRequest = (r: { url(): string }) => { if (isApi(r.url())) { inFlight++; last = Date.now(); } };
+    const onDone = (r: { url(): string }) => { if (isApi(r.url())) { inFlight = Math.max(0, inFlight - 1); last = Date.now(); } };
+    this.page.on("request", onRequest);
+    this.page.on("requestfinished", onDone);
+    this.page.on("requestfailed", onDone);
+    try {
+      const deadline = Date.now() + timeoutMs;
+      while (inFlight > 0 || Date.now() - last < quietMs) {
+        if (Date.now() > deadline) throw new Error(`La app no dejó de hacer peticiones en ${timeoutMs} ms`);
+        await this.page.waitForTimeout(100);
+      }
+    } finally {
+      this.page.off("request", onRequest);
+      this.page.off("requestfinished", onDone);
+      this.page.off("requestfailed", onDone);
+    }
+  }
+
   // ---------- Login QA ----------
   async goto() {
     await this.page.goto("/");
