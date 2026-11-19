@@ -1,0 +1,48 @@
+name: run-tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "ID del run en Supabase"
+        required: true
+      suite:
+        description: "Slug de la suite (ej. a-auth)"
+        required: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      RUN_ID: ${{ inputs.run_id }}
+      SUITE: ${{ inputs.suite }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      BASE_URL: ${{ secrets.TARGET_BASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: Sahueson/ivan-qa-lab-shared
+          path: shared
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      - name: Marcar run como en curso
+        run: node shared/send-to-supabase.js start
+
+      - name: Ejecutar tests
+        run: npx playwright test "tests/$SUITE"
+        continue-on-error: true
+
+      - name: Enviar resultados
+        if: always()
+        run: node shared/send-to-supabase.js finish result.json
