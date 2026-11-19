@@ -22,6 +22,10 @@ jobs:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
       BASE_URL: ${{ secrets.TARGET_BASE_URL }}
+      # Reset del staging en global-setup (usuarios QA + seed) y login de los tests.
+      STG_URL: ${{ secrets.STG_URL }}
+      STG_SECRET_KEY: ${{ secrets.STG_SECRET_KEY }}
+      QA_PASSWORD: ${{ secrets.QA_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
 
@@ -31,6 +35,9 @@ jobs:
           path: shared
 
       - run: npm ci
+
+      - name: Dependencias de shared (reset del staging)
+        run: npm ci --prefix shared
 
       - name: Marcar run como en curso
         run: node shared/send-to-supabase.js start

@@ -44,7 +44,9 @@ class QALabReporter implements Reporter {
     const status =
       outcome === "skipped" ? "skipped" :
       outcome === "unexpected" ? "failed" : "passed";
-    const role = test.annotations.find((a) => a.type === "role")?.description ?? null;
+    // Las anotaciones añadidas en ejecución (testInfo.annotations) llegan en result.annotations.
+    const annotations = [...((result as any).annotations ?? []), ...test.annotations];
+    const role = annotations.find((a) => a.type === "role")?.description ?? null;
 
     this.tests.set(test.id, {
       name: test.title,

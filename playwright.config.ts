@@ -13,6 +13,11 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './tests',
+  /* Resetea el staging (usuarios QA + seed) antes de cada ejecución. */
+  globalSetup: './global-setup.ts',
+  /* La app carga datos de Supabase remoto: algo más de margen que el valor por defecto. */
+  timeout: 45_000,
+  expect: { timeout: 10_000 },
   /* El staging es compartido y los tests cambian datos: siempre en serie. */
   fullyParallel: false,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -23,7 +28,11 @@ export default defineConfig({
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [["list"], ["./reporters/qa-lab-reporter.ts"]],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
-  use: { baseURL: process.env.BASE_URL },
+  use: {
+    baseURL: process.env.BASE_URL,
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+  },
 
   /* Configure projects for major browsers */
   projects: [
