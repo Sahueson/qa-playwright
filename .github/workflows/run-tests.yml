@@ -50,6 +50,17 @@ jobs:
         if: always()
         run: node shared/send-to-supabase.js finish result.json
 
+      # Solo capturas: las trazas incluyen las peticiones de login (contraseña QA y tokens)
+      # y los artefactos de un repo público los puede descargar cualquiera.
+      - name: Capturas de los tests fallidos
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: capturas-${{ inputs.suite }}
+          path: test-results/**/*.png
+          if-no-files-found: ignore
+          retention-days: 7
+
       # Si algo falla antes de tener result.json (npm ci, config, job cancelado...),
       # el run se cierra como 'failed' para no dejar bloqueado el índice one_active_run.
       # Solo afecta a runs aún activos: tras un 'finish' correcto no hace nada.

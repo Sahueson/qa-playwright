@@ -22,8 +22,9 @@ export default defineConfig({
   fullyParallel: false,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
+  /* Sin reintentos: los tests modifican el staging (reseteado una vez por ejecución), así que
+     un reintento parte de otro estado y solo produce errores engañosos. */
+  retries: 0,
   workers: 1,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [["list"], ["./reporters/qa-lab-reporter.ts"]],

@@ -26,10 +26,9 @@ test.describe("Suite A · Autenticación", () => {
     await expect(app.newEventButton).toBeHidden();
   });
 
-  // BUG conocido (19-nov-2026): la política RLS "Lectura de perfiles por unidad" exige
-  // NOT is_current_user_blocked() también para el propio perfil, así que un bloqueado no puede
-  // leerse a sí mismo y la app le muestra "Pendiente de asignación" (sin nombre) en vez de
-  // "Acceso denegado". Este test se deja en rojo a propósito hasta que se corrija.
+  // Detectó un bug real (19-nov-2026, ya corregido en el staging): la política RLS "Lectura de
+  // perfiles por unidad" no dejaba a un bloqueado leer su propio perfil y la app le mostraba
+  // "Pendiente de asignación" (sin nombre) en vez de "Acceso denegado".
   test("TC-A02 Usuario bloqueado ve acceso denegado", async ({ app, loginAs }) => {
     await loginAs("blocked");
     await expect(app.page.getByRole("heading", { name: "Acceso denegado" })).toBeVisible();
