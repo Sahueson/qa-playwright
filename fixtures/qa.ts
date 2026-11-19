@@ -59,10 +59,9 @@ export const test = base.extend<Fixtures>({
       await app.goto();
       await app.login(user.email, password);
       await expect(app.loginButton).toBeHidden();
-      // Sin esperas extra a propósito: la app cargaba los datos dos veces tras el login y la 2ª
-      // carga pisaba cambios recién guardados (bug corregido en cbf909b). Si vuelve, TC-B02/B02b
-      // lo detectan.
-      await app.page.waitForLoadState("networkidle");
+      // Espera a que termine la carga inicial de datos. (La app cargaba dos veces tras el login y
+      // la 2ª pisaba cambios recién guardados: corregido en cbf909b; TC-B02/B02b lo vigilan.)
+      await app.waitForQuietNetwork();
       return user;
     });
   },

@@ -1,4 +1,4 @@
-import { test, expect } from "../../fixtures/qa";
+import { test, expect, resetStaging } from "../../fixtures/qa";
 
 // Suite F · Excedencias FOE (Art. 18 y 19): las solicita el jugador, las concede la Junta
 // Directiva y nadie se concede la suya. Duración entre 1 mes y 1 año.
@@ -10,6 +10,11 @@ const inDays = (days: number) => {
 };
 
 test.describe("Suite F · Excedencias", () => {
+  // Cada suite parte del seed: no depende del orden ni de lo que hayan tocado otras.
+  test.beforeAll(async () => {
+    await resetStaging();
+  });
+
   test("TC-F01 Un jugador solicita una excedencia y queda pendiente de la Junta", async ({ app, loginAs }) => {
     await loginAs("player_foe");
     await app.openLeavesPanel();

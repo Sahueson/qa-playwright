@@ -1,12 +1,18 @@
-import { test, expect } from "../../fixtures/qa";
+import { test, expect, resetStaging } from "../../fixtures/qa";
 
 // Suite C · Inscripciones y reglas de negocio (contexto_qa.md, TC-C01..C03 + casos límite).
 // Usa partidas propias del seed para no depender de lo que modifica la suite B.
 
 test.describe("Suite C · Inscripciones", () => {
+  test.beforeAll(async () => {
+    await resetStaging();
+  });
+
   test("TC-C01 Inscribirse preselecciona la equipación de la partida y avisa si no la tienes", async ({ app, loginAs }) => {
-    await loginAs("player_foe"); // su ficha no tiene equipaciones
-    await app.openEvent("QA FOE · Inscripción abierta"); // equipación recomendada: Tiger Stripe
+    // junta2 tiene Árido en su ficha; la partida recomienda Tiger Stripe. (Con la ficha vacía la
+    // app no avisa: el aviso solo sale si tienes equipaciones marcadas y no es ninguna de ellas.)
+    await loginAs("junta2");
+    await app.openEvent("QA FOE · Inscripción abierta");
 
     await expect(app.registrationGear).toHaveValue("Tiger Stripe");
     await expect(app.modal.getByText("No tienes «Tiger Stripe» marcada en tu ficha")).toBeVisible();
@@ -14,7 +20,7 @@ test.describe("Suite C · Inscripciones", () => {
     await app.modal.getByRole("button", { name: "Apuntarse" }).click();
     await app.expectToast("Inscripción guardada en la nube.");
     await expect(app.modal.getByText("Inscritos (1)")).toBeVisible();
-    await expect(app.modal.getByText("QA Jugador FOE (Tú)")).toBeVisible();
+    await expect(app.modal.getByText("QA Junta 2 (Tú)")).toBeVisible();
     await expect(app.modal.getByRole("button", { name: "Actualizar inscripción" })).toBeVisible();
   });
 
@@ -28,14 +34,14 @@ test.describe("Suite C · Inscripciones", () => {
   });
 
   test("TC-C04 Darse de baja a más de 48 h libera la plaza", async ({ app, loginAs }) => {
-    await loginAs("junta2");
+    await loginAs("player_foe");
     await app.openEvent("QA FOE · Inscripción abierta");
     await app.modal.getByRole("button", { name: "Apuntarse" }).click();
     await app.expectToast("Inscripción guardada en la nube.");
 
     await app.modal.getByRole("button", { name: "Darse de baja" }).click();
     await app.expectToast("Has cancelado tu inscripción.");
-    await expect(app.modal.getByText("QA Junta 2 (Tú)")).toBeHidden();
+    await expect(app.modal.getByText("QA Jugador FOE (Tú)")).toBeHidden();
     await expect(app.modal.getByRole("button", { name: "Apuntarse" })).toBeVisible();
   });
 

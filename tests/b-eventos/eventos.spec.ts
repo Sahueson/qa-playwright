@@ -1,4 +1,4 @@
-import { test, expect } from "../../fixtures/qa";
+import { test, expect, resetStaging } from "../../fixtures/qa";
 
 // Suite B · Ciclo de vida de partidas (contexto_qa.md, TC-B01..B03).
 // Cada test actúa sobre una partida distinta del seed, así no dependen del orden.
@@ -10,6 +10,11 @@ const futureDate = (days: number) => {
 };
 
 test.describe("Suite B · Ciclo de vida de partidas", () => {
+  // Cada suite parte del seed: no depende del orden ni de lo que hayan tocado otras.
+  test.beforeAll(async () => {
+    await resetStaging();
+  });
+
   test("TC-B01 Crear partida valida los campos obligatorios", async ({ app, loginAs }) => {
     await loginAs("admin_mad");
     await app.newEventButton.click();

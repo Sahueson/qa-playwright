@@ -19,6 +19,31 @@ export class AppPage {
     this.modal = page.locator(".modal");
   }
 
+  // Espera a que la app no tenga peticiones a Supabase en vuelo durante `quietMs`.
+  // Ojo: page.waitForLoadState("networkidle") NO sirve aquí: es un evento de carga de página
+  // que solo ocurre una vez por navegación; en una SPA, después vuelve al instante.
+  async waitForQuietNetwork(quietMs = 700, timeoutMs = 15_000) {
+    let last = Date.now();
+    let inFlight = 0;
+    const isApi = (url: string) => /\/(rest|auth|storage)\/v1\//.test(url);
+    const onRequest = (r: { url(): string }) => { if (isApi(r.url())) { inFlight++; last = Date.now(); } };
+    const onDone = (r: { url(): string }) => { if (isApi(r.url())) { inFlight = Math.max(0, inFlight - 1); last = Date.now(); } };
+    this.page.on("request", onRequest);
+    this.page.on("requestfinished", onDone);
+    this.page.on("requestfailed", onDone);
+    try {
+      const deadline = Date.now() + timeoutMs;
+      while (inFlight > 0 || Date.now() - last < quietMs) {
+        if (Date.now() > deadline) throw new Error(`La app no dejó de hacer peticiones en ${timeoutMs} ms`);
+        await this.page.waitForTimeout(100);
+      }
+    } finally {
+      this.page.off("request", onRequest);
+      this.page.off("requestfinished", onDone);
+      this.page.off("requestfailed", onDone);
+    }
+  }
+
   // ---------- Login QA ----------
   async goto() {
     await this.page.goto("/");
@@ -59,15 +84,16 @@ export class AppPage {
     await this.openTab("Partidas");
     // El modal recarga los datos al abrirse (loadCloudData) y esa recarga reinicia el borrador
     // de asistencia: marcar casillas antes de que termine las pierde (bug reportado, 19-nov).
-    // Se espera a la respuesta de esa recarga y luego a que la red quede en reposo.
-    const reload = this.page.waitForResponse(
-      (r) => r.url().includes("/rest/v1/event_registrations") && r.request().method() === "GET",
+    // Se escucha la PETICIÓN emitida tras el clic (no una recarga anterior aún en vuelo), se
+    // espera a su respuesta y luego a que la red quede en reposo.
+    const reloadRequest = this.page.waitForRequest(
+      (r) => r.url().includes("/rest/v1/event_registrations") && r.method() === "GET",
       { timeout: 15_000 },
     );
     await this.eventCard(title).locator(".tactical-btn--blue").click();
     await expect(this.modal.getByRole("heading", { name: "Detalle de partida" })).toBeVisible();
-    await reload;
-    await this.page.waitForLoadState("networkidle");
+    await (await reloadRequest).response();
+    await this.waitForQuietNetwork();
   }
 
   // ---------- Jugadores ----------

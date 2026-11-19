@@ -1,4 +1,4 @@
-import { test, expect } from "../../fixtures/qa";
+import { test, expect, resetStaging } from "../../fixtures/qa";
 
 // Suite E · Gobernanza y régimen disciplinario FOE (contexto_qa.md, TC-E01..E05).
 // El recuento, el cierre y el escalado los decide el servidor (close_foe_poll), así que estos
@@ -7,6 +7,11 @@ import { test, expect } from "../../fixtures/qa";
 // falta de un voto (el de junta2), salvo el de recusación.
 
 test.describe("Suite E · Gobernanza FOE", () => {
+  // Cada suite parte del seed: no depende del orden ni de lo que hayan tocado otras.
+  test.beforeAll(async () => {
+    await resetStaging();
+  });
+
   test("TC-E01 La Junta Directiva abre un expediente sancionador", async ({ app, loginAs }) => {
     await loginAs("admin_foe");
     await app.openFoeSection("Votos · Junta Directiva");
