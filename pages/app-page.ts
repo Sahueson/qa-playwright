@@ -61,6 +61,16 @@ export class AppPage {
     await expect(this.modal.getByRole("heading", { name: "Detalle de partida" })).toBeVisible();
   }
 
+  // ---------- FOE · Votos y Faltas ----------
+  async openFoeSection(label: "Votos · Junta Operativa" | "Votos · Junta Directiva" | "Faltas y Sanciones") {
+    await this.openTab("FOE · Votos y Faltas");
+    await this.page.getByRole("button", { name: label, exact: true }).click();
+  }
+
+  pollCard(title: string) {
+    return this.page.locator(".tactical-card").filter({ has: this.page.getByRole("heading", { name: title }) });
+  }
+
   // Formulario de inscripción del detalle de partida.
   get registrationGear() {
     return this.modal.locator(".inscribir-form select").nth(0);
