@@ -1,12 +1,15 @@
 {
   "name": "qa-playwright",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Suite Playwright de Ivan QA Lab contra Tactical Calendar (staging)",
   "directories": {
     "test": "tests"
   },
-  "scripts": {},
+  "scripts": {
+    "test": "playwright test",
+    "test:a-auth": "playwright test tests/a-auth",
+    "test:b-eventos": "playwright test tests/b-eventos"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",

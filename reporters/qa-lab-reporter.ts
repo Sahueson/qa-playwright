@@ -7,9 +7,24 @@ const shared = enabled
   ? require(path.resolve(__dirname, "../shared/send-to-supabase.js"))
   : null;
 
+// Los mensajes de expect() vienen coloreados para la terminal; en la web serían basura.
+const stripAnsi = (s: string) => s.replace(/\u001b\[[0-9;]*m/g, "");
+const firstLine = (msg?: string) => (msg ? stripAnsi(msg).split("\n")[0] : null);
+
+type NormalizedTest = {
+  name: string;
+  status: "passed" | "failed" | "skipped";
+  duration_ms: number;
+  role: string | null;
+  error: string | null;
+  evidence_url: string | null;
+};
+
 class QALabReporter implements Reporter {
   private startedAt = new Date();
-  private tests: any[] = [];
+  // Clave = test.id: con reintentos en CI, cada intento sobrescribe al anterior y
+  // solo cuenta el resultado final (un test "flaky" que acaba pasando cuenta como passed).
+  private tests = new Map<string, NormalizedTest>();
   private pending: Promise<unknown>[] = [];
 
   private send(type: string, message: string) {
@@ -17,31 +32,36 @@ class QALabReporter implements Reporter {
     this.pending.push(shared.sendEvent(type, message).catch(() => {}));
   }
 
-  onTestBegin(test: TestCase) {
-    this.send("test_started", test.title);
+  onTestBegin(test: TestCase, result: TestResult) {
+    this.send("test_started", result.retry ? `${test.title} (reintento ${result.retry})` : test.title);
   }
 
   onTestEnd(test: TestCase, result: TestResult) {
+    const outcome = test.outcome(); // expected | unexpected | flaky | skipped
+    const isFinalAttempt = outcome !== "unexpected" || result.retry >= test.retries;
+    if (!isFinalAttempt) return; // Playwright lo va a reintentar
+
     const status =
-      result.status === "passed" ? "passed" :
-      result.status === "skipped" ? "skipped" : "failed";
+      outcome === "skipped" ? "skipped" :
+      outcome === "unexpected" ? "failed" : "passed";
     const role = test.annotations.find((a) => a.type === "role")?.description ?? null;
 
-    this.tests.push({
+    this.tests.set(test.id, {
       name: test.title,
       status,
       duration_ms: Math.round(result.duration),
       role,
-      error: result.error?.message?.split("\n")[0] ?? null,
+      error: status === "failed" ? firstLine(result.error?.message) : null,
       evidence_url: null,
     });
-    this.send(status === "failed" ? "test_failed" : "test_passed", test.title);
+    this.send(status === "failed" ? "test_failed" : status === "skipped" ? "test_skipped" : "test_passed", test.title);
   }
 
   async onEnd() {
     await Promise.all(this.pending);
     const finishedAt = new Date();
-    const count = (s: string) => this.tests.filter((t) => t.status === s).length;
+    const tests = [...this.tests.values()];
+    const count = (s: NormalizedTest["status"]) => tests.filter((t) => t.status === s).length;
 
     fs.writeFileSync(
       "result.json",
@@ -53,12 +73,12 @@ class QALabReporter implements Reporter {
         finished_at: finishedAt.toISOString(),
         duration_ms: finishedAt.getTime() - this.startedAt.getTime(),
         summary: {
-          total: this.tests.length,
+          total: tests.length,
           passed: count("passed"),
           failed: count("failed"),
           skipped: count("skipped"),
         },
-        tests: this.tests,
+        tests,
       }, null, 2)
     );
   }
