@@ -47,16 +47,33 @@ test.describe("Suite I · Normas del equipo", () => {
   });
 
   test("TC-I02 Eliminar un documento borra también el fichero", async ({ app, loginAs }) => {
+    // apikey y sesión con los que la propia app habla con Supabase (para preguntar a Storage).
+    let apikey = "";
+    app.page.on("request", (r) => { apikey ||= r.headers()["apikey"] ?? ""; });
     await loginAs("admin_foe");
     const title = `QA E2E · Estatutos a borrar ${Date.now()}`;
     await uploadStatutes(app, title);
-    const href = await app.page.getByRole("link", { name: "Pantalla completa" }).getAttribute("href");
+    const href = (await app.page.getByRole("link", { name: "Pantalla completa" }).getAttribute("href"))!;
 
     await app.page.getByRole("button", { name: "Eliminar", exact: true }).click();
     await app.expectToast("Documento eliminado.");
     await expect(app.page.getByText(title, { exact: true })).toHaveCount(0);
-    // El enlace firmado seguiría siendo válido si el fichero no se hubiera borrado de Storage.
-    expect((await app.page.request.get(href!)).ok()).toBe(false);
+
+    // ¿Sigue el fichero en Storage? NO se reutiliza el enlace firmado: el visor ya lo cargó y la
+    // CDN de Supabase puede seguir sirviéndolo hasta ~60 s después de borrar (falló así en CI).
+    // Se pide al servidor un enlace NUEVO para esa ruta: si el fichero no existe, lo rechaza.
+    const url = new URL(href);
+    const objectPath = url.pathname.replace(/^.*\/object\/sign\/team-documents\//, "");
+    const token = await app.page.evaluate(() => {
+      const key = Object.keys(localStorage).find((k) => k.endsWith("-auth-token"));
+      return key ? JSON.parse(localStorage.getItem(key)!).access_token : null;
+    });
+    expect(token).toBeTruthy();
+    const resign = await app.page.request.post(`${url.origin}/storage/v1/object/sign/team-documents/${objectPath}`, {
+      headers: { apikey, Authorization: `Bearer ${token}` },
+      data: { expiresIn: 60 },
+    });
+    expect(resign.ok(), `Storage aún firma ${objectPath}: el fichero no se borró`).toBe(false);
   });
 
   test("TC-I03 El formulario exige título y solo acepta PDF", async ({ app, loginAs }) => {
