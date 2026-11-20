@@ -46,4 +46,40 @@ test.describe("Suite D · Asistencia", () => {
     await app.openTab("Jugadores");
     await expect(app.attendanceOf("QA Jugador FOE")).toContainText("57% (2/3,5)");
   });
+
+  // Regresión del bug (c), corregido en bfdc0e2: al abrir el detalle la app recarga los datos y
+  // esa recarga reiniciaba el borrador de asistencia, borrando lo que el admin ya había marcado
+  // (se guardaba mal y la partida quedaba bloqueada). Para que la recarga llegue SIEMPRE después
+  // de la marca, se retrasa a propósito su respuesta 1,5 s.
+  test("TC-D05 Una marca hecha nada más abrir la partida no se pierde con la recarga", async ({ app, loginAs }) => {
+    await loginAs("junta2");
+    await app.openTab("Partidas");
+    let reloadDone = false;
+    await app.page.route(/\/rest\/v1\/event_registrations/, async (route) => {
+      if (route.request().method() !== "GET") return route.continue();
+      await new Promise((r) => setTimeout(r, 1_500));
+      await route.continue();
+      reloadDone = true;
+    });
+
+    await app.eventCard("QA FOE · Partida finalizada").locator(".tactical-btn--blue").click();
+    const checkbox = app.modal.locator(".event-detail__reg-row").filter({ hasText: "QA Admin FOE" }).getByRole("checkbox");
+    // El borrador se rellena justo después de pintar el modal (en el primer instante sale vacío).
+    await expect(checkbox).toBeChecked();
+    await checkbox.uncheck();
+    expect(reloadDone).toBe(false); // la marca va antes de que llegue la recarga
+
+    await expect.poll(() => reloadDone, { timeout: 15_000 }).toBe(true);
+    await app.waitForQuietNetwork();
+    await expect(checkbox).not.toBeChecked();
+    await app.page.unroute(/\/rest\/v1\/event_registrations/);
+    await app.modal.getByRole("button", { name: "Guardar asistencia y bloquear partida" }).click();
+    await app.expectToast("Asistencia guardada y partida bloqueada.");
+
+    // Lo guardado en la base de datos, no solo en pantalla.
+    await app.page.reload();
+    await app.waitForQuietNetwork();
+    await app.openTab("Jugadores");
+    await expect(app.attendanceOf("QA Admin FOE")).toContainText("0% (0/3,5)");
+  });
 });

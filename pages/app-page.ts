@@ -97,9 +97,12 @@ export class AppPage {
   }
 
   // ---------- Jugadores ----------
+  // El título de la ficha es el nickname, con " [BLOQUEADO]" si está bloqueado o " (Tú)" si es
+  // el usuario con sesión.
   playerCard(nickname: string) {
+    const escaped = nickname.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     return this.page.locator(".tactical-card").filter({
-      has: this.page.getByRole("heading", { name: nickname, exact: true }),
+      has: this.page.getByRole("heading", { name: new RegExp(`^${escaped}( \\[BLOQUEADO\\]| \\(Tú\\))?$`) }),
     });
   }
 

@@ -1,6 +1,7 @@
 import { test, expect, resetStaging } from "../../fixtures/qa";
 
-// Suite B · Ciclo de vida de partidas (contexto_qa.md, TC-B01..B03).
+// Suite B · Ciclo de vida de partidas: crear, cancelar, reactivar, editar, eliminar, cerrar el
+// acta y desbloquearla (aprobación de los demás responsables, RPC del servidor).
 // Cada test actúa sobre una partida distinta del seed, así no dependen del orden.
 
 const futureDate = (days: number) => {
@@ -100,5 +101,119 @@ test.describe("Suite B · Ciclo de vida de partidas", () => {
 
     await expect(app.modal.getByRole("button", { name: "Editar partida" })).toBeHidden();
     await expect(app.modal.getByRole("button", { name: "Cancelar partida" })).toBeHidden();
+  });
+
+  test("TC-B05 Un admin edita una partida de su equipo", async ({ app, loginAs }) => {
+    await loginAs("admin_mad");
+    const title = `QA MAD · Partida editada ${Date.now()}`;
+    await app.openTab("Partidas");
+    await app.eventCard("QA MAD · Partida a editar").getByRole("button", { name: "Editar", exact: true }).click();
+
+    const form = app.modal.filter({ has: app.page.getByRole("heading", { name: "Editar partida" }) });
+    await form.getByPlaceholder("Ej. Dominical CQB / Operación Tormenta").fill(title);
+    await form.getByRole("button", { name: "Guardar cambios" }).click();
+
+    await app.expectToast("Partida actualizada.");
+    await expect(form).toBeHidden();
+    await expect(app.eventCard(title)).toBeVisible();
+    await expect(app.eventCard("QA MAD · Partida a editar")).toHaveCount(0);
+  });
+
+  test("TC-B06 Reactivar una partida cancelada", async ({ app, loginAs }) => {
+    await loginAs("admin_foe");
+    await app.openEvent("QA FOE · Partida cancelada");
+
+    await app.modal.getByRole("button", { name: "Reactivar partida" }).click();
+
+    await app.expectToast("Partida reactivada.");
+    await expect(app.modal.getByText(/^CANCELADA/)).toBeHidden();
+    await expect(app.modal.getByRole("button", { name: "Cancelar partida" })).toBeVisible();
+  });
+
+  test("TC-B07 Eliminar una partida pide confirmación y la borra del servidor", async ({ app, loginAs }) => {
+    await loginAs("admin_mad");
+    await app.openTab("Partidas");
+    const card = app.eventCard("QA MAD · Partida a eliminar");
+
+    await card.getByRole("button", { name: "Eliminar", exact: true }).click();
+    // Primer clic solo muestra la confirmación; el botón pasa a "Cancelar".
+    await expect(card.getByRole("button", { name: "Cancelar", exact: true })).toBeVisible();
+    await card.getByRole("button", { name: "Confirmar eliminar partida" }).click();
+
+    await app.expectToast("Partida eliminada.");
+    await expect(card).toHaveCount(0);
+    // Tras recargar sigue sin estar: se borró en la base de datos, no solo en pantalla.
+    await app.page.reload();
+    await app.waitForQuietNetwork();
+    await app.openTab("Partidas");
+    await expect(app.eventCard("QA MAD · Partida próxima")).toBeVisible();
+    await expect(app.eventCard("QA MAD · Partida a eliminar")).toHaveCount(0);
+  });
+
+  test("TC-B08 Una partida cerrada no se puede editar ni eliminar desde la lista", async ({ app, loginAs }) => {
+    await loginAs("admin_mad");
+    await app.openTab("Partidas");
+    const card = app.eventCard("QA MAD · Partida cerrada");
+
+    await expect(card.getByRole("button", { name: "Ver acta / Desbloquear" })).toBeVisible();
+    await expect(card.getByRole("button", { name: "Editar", exact: true })).toHaveCount(0);
+    await expect(card.getByRole("button", { name: "Eliminar", exact: true })).toHaveCount(0);
+  });
+
+  test("TC-B09 Un jugador no puede pedir el desbloqueo de un acta", async ({ app, loginAs }) => {
+    await loginAs("player_mad");
+    await app.openEvent("QA MAD · Partida cerrada");
+
+    await expect(app.modal.getByText(/Partida cerrada y bloqueada/)).toBeVisible();
+    await expect(app.modal.getByRole("button", { name: "Solicitar desbloqueo para editar" })).toBeHidden();
+  });
+
+  test("TC-B10 Desbloquear un acta MAD: la pide su admin y la aprueba el super admin", async ({ app, loginAs }) => {
+    test.setTimeout(90_000);
+    await loginAs("admin_mad");
+    await app.openEvent("QA MAD · Partida cerrada");
+    await app.modal.getByRole("button", { name: "Solicitar desbloqueo para editar" }).click();
+
+    // Responsables MAD aparte de quien lo pide: solo el super admin.
+    await app.expectToast("Solicitud enviada. Pendiente de aprobación por 1 responsable.");
+    await expect(app.modal.getByText("Solicitud de desbloqueo activa (iniciada por QA Admin MAD)")).toBeVisible();
+    await expect(app.modal.getByText("Aprobaciones necesarias (0/1):")).toBeVisible();
+
+    await loginAs("superadmin");
+    await app.openEvent("QA MAD · Partida cerrada");
+    await app.modal.getByRole("button", { name: "Aceptar desbloqueo" }).click();
+
+    await app.expectToast("Todos han aprobado. Partida desbloqueada.");
+    await expect(app.modal.getByText(/Partida cerrada y bloqueada/)).toBeHidden();
+    await expect(app.modal.getByRole("button", { name: "Editar partida" })).toBeVisible();
+  });
+
+  test("TC-B11 Desbloquear un acta FOE necesita a los otros dos responsables y se puede cancelar", async ({ app, loginAs }) => {
+    test.setTimeout(120_000);
+    const title = "QA FOE · Partida pasada abierta";
+    await loginAs("admin_foe");
+    await app.openEvent(title);
+    await app.modal.getByRole("button", { name: "Guardar asistencia y bloquear partida" }).click();
+    await app.expectToast("Asistencia guardada y partida bloqueada.");
+
+    await app.modal.getByRole("button", { name: "Solicitar desbloqueo para editar" }).click();
+    // Responsables FOE aparte de admin_foe: super admin y QA Junta 2 (Junta Operativa).
+    await app.expectToast("Solicitud enviada. Pendiente de aprobación por 2 responsables.");
+
+    await loginAs("junta2");
+    await app.openEvent(title);
+    // Solo quien lo pidió (o el super admin) puede cancelar la solicitud.
+    await expect(app.modal.getByRole("button", { name: "Cancelar solicitud" })).toBeHidden();
+    await app.modal.getByRole("button", { name: "Aceptar desbloqueo" }).click();
+    await app.expectToast("Tu aprobación ha quedado registrada.");
+    await expect(app.modal.getByText("Aprobaciones necesarias (1/2):")).toBeVisible();
+    await expect(app.modal.getByText(/Partida cerrada y bloqueada/)).toBeVisible();
+
+    await loginAs("admin_foe");
+    await app.openEvent(title);
+    await app.modal.getByRole("button", { name: "Cancelar solicitud" }).click();
+    await app.expectToast("Solicitud de desbloqueo cancelada.");
+    await expect(app.modal.getByRole("button", { name: "Solicitar desbloqueo para editar" })).toBeVisible();
+    await expect(app.modal.getByText(/Partida cerrada y bloqueada/)).toBeVisible();
   });
 });

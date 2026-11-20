@@ -56,6 +56,11 @@ export const test = base.extend<Fixtures>({
       if (!password) throw new Error("Falta QA_PASSWORD");
       const user = qaUser(key);
       testInfo.annotations.push({ type: "role", description: user.nickname });
+      // Cambio de usuario dentro del mismo test (p. ej. uno pide el desbloqueo y otro lo
+      // aprueba): la sesión de Supabase vive en localStorage; se borra antes de recargar.
+      if (app.page.url().startsWith("http")) {
+        await app.page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); });
+      }
       await app.goto();
       await app.login(user.email, password);
       await expect(app.loginButton).toBeHidden();
