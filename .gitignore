@@ -9,3 +9,4 @@ node_modules/
 shared
 result.json
 .env*
+report
