@@ -27,13 +27,13 @@ export default defineConfig({
   retries: 0,
   workers: 1,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: [["list"], ["./reporters/qa-lab-reporter.ts"]],
+  reporter: [["list"], ["./reporters/qa-lab-reporter.ts"], ["html", { outputFolder: "report", open: "never" }]],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     baseURL: process.env.BASE_URL,
     /* Las trazas se quedan en local/CI (llevan la contraseña QA); la captura de evidencia la hace
        fixtures/qa.ts en JPEG para cada test. */
-    trace: 'retain-on-failure',
+    trace: process.env.CI ? 'off' : 'retain-on-failure', // en CI el informe es público: sin trazas
     screenshot: 'off',
   },
 
