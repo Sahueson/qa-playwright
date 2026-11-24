@@ -6,8 +6,13 @@ import type { AppPage } from "../../pages/app-page";
 // jugador afectado. Cada test toca a un jugador distinto, así no dependen del orden. El reset
 // vuelve a dejar los perfiles como en users.json.
 
+// Desplegables de la ficha: el aria-label lleva el nombre del jugador, así que se localizan por data-testid.
 const roleSelect = (app: AppPage, nickname: string) =>
-  app.playerCard(nickname).locator("select").filter({ has: app.page.locator('option[value="super_admin"]') });
+  app.playerCard(nickname).locator('[data-testid^="roster-app-role-select-"]');
+const addSquadSelect = (app: AppPage, nickname: string) =>
+  app.playerCard(nickname).locator('[data-testid^="roster-add-squad-select-"]');
+const blockButton = (app: AppPage, nickname: string) =>
+  app.playerCard(nickname).locator('[data-testid^="roster-block-btn-"]');
 
 test.describe("Suite G · Gestión de jugadores", () => {
   test.beforeAll(async () => {
@@ -18,14 +23,14 @@ test.describe("Suite G · Gestión de jugadores", () => {
     test.setTimeout(90_000);
     await loginAs("superadmin");
     await app.openTab("Jugadores");
-    await roleSelect(app, "QA Jugador MAD").selectOption("admin");
+    await app.chooseOption(roleSelect(app, "QA Jugador MAD"), "Admin (Partidas)");
     await app.expectToast("Ficha actualizada para QA Jugador MAD.");
 
     await loginAs("player_mad");
     await app.openTab("Partidas");
     const card = app.eventCard("QA MAD · Partida próxima");
-    await expect(card.getByRole("button", { name: "Editar", exact: true })).toBeVisible();
-    await expect(card.getByRole("button", { name: "Eliminar", exact: true })).toBeVisible();
+    await expect(app.eventEditButton(card)).toBeVisible();
+    await expect(app.eventDeleteButton(card)).toBeVisible();
   });
 
   test("TC-G02 El super admin bloquea a un jugador y este pierde el acceso", async ({ app, loginAs }) => {
@@ -33,9 +38,9 @@ test.describe("Suite G · Gestión de jugadores", () => {
     await loginAs("superadmin");
     await app.openTab("Jugadores");
     const card = app.playerCard("QA Jugador FOE");
-    await card.getByRole("button", { name: "Bloquear", exact: true }).click();
+    await blockButton(app, "QA Jugador FOE").click();
     await app.expectToast("Ficha actualizada para QA Jugador FOE.");
-    await expect(card.getByRole("button", { name: "Desbloquear", exact: true })).toBeVisible();
+    await expect(blockButton(app, "QA Jugador FOE")).toHaveText("Desbloquear");
     await expect(card.getByRole("heading", { name: "QA Jugador FOE [BLOQUEADO]" })).toBeVisible();
 
     await loginAs("player_foe");
@@ -49,7 +54,7 @@ test.describe("Suite G · Gestión de jugadores", () => {
     await app.openTab("Jugadores");
     const card = app.playerCard("QA Sin Equipo");
     await expect(card.getByText("Sin equipo asignado")).toBeVisible();
-    await card.locator("select").filter({ hasText: "+ Añadir otro equipo" }).selectOption("FOE");
+    await app.chooseOption(addSquadSelect(app, "QA Sin Equipo"), "FOE");
     await app.expectToast("Ficha actualizada para QA Sin Equipo.");
     await expect(card.getByTitle("Quitar de FOE")).toBeVisible();
 
@@ -82,7 +87,7 @@ test.describe("Suite G · Gestión de jugadores", () => {
     const card = app.playerCard("QA Junta 2");
     await expect(card).toBeVisible();
     await expect(roleSelect(app, "QA Junta 2")).toHaveCount(0);
-    await expect(card.getByRole("button", { name: /^(Bloquear|Desbloquear)$/ })).toHaveCount(0);
+    await expect(blockButton(app, "QA Junta 2")).toHaveCount(0);
     await expect(card.getByTitle("Quitar de FOE")).toHaveCount(0);
     await expect(card.getByRole("button", { name: /Junta Operativa/ })).toBeDisabled();
   });
@@ -93,7 +98,7 @@ test.describe("Suite G · Gestión de jugadores", () => {
     const card = app.playerCard("QA Super Admin");
     await expect(card).toBeVisible();
     await expect(roleSelect(app, "QA Super Admin")).toHaveCount(0);
-    await expect(card.getByRole("button", { name: "Bloquear", exact: true })).toHaveCount(0);
+    await expect(blockButton(app, "QA Super Admin")).toHaveCount(0);
   });
 
   test("TC-G07 Un admin de equipo solo ve a los jugadores de su equipo", async ({ app, loginAs }) => {

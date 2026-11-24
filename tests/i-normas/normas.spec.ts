@@ -55,7 +55,7 @@ test.describe("Suite I · Normas del equipo", () => {
     await uploadStatutes(app, title);
     const href = (await app.page.getByRole("link", { name: "Pantalla completa" }).getAttribute("href"))!;
 
-    await app.page.getByRole("button", { name: "Eliminar", exact: true }).click();
+    await app.page.getByTestId("docs-statute-delete-btn").click();
     await app.expectToast("Documento eliminado.");
     await expect(app.page.getByText(title, { exact: true })).toHaveCount(0);
 
@@ -103,7 +103,7 @@ test.describe("Suite I · Normas del equipo", () => {
     await app.openTab("Normas");
     await expect(app.page.getByText(title, { exact: true }).first()).toBeVisible();
     await expect(app.page.getByRole("button", { name: "+ Subir PDF" })).toHaveCount(0);
-    await expect(app.page.getByRole("button", { name: "Eliminar", exact: true })).toHaveCount(0);
+    await expect(app.page.getByTestId("docs-statute-delete-btn")).toHaveCount(0);
   });
 
   test("TC-I05 Un jugador de otro equipo no ve las normas del FOE", async ({ app, loginAs }) => {
@@ -115,7 +115,7 @@ test.describe("Suite I · Normas del equipo", () => {
     await loginAs("player_mad");
     await app.openTab("Normas");
     await expect(app.page.getByText("Todavía no hay estatutos o normativa publicados para MAD Irregulars.")).toBeVisible();
-    await expect(app.page.locator("#doc-squad-select")).toHaveCount(0);
+    await expect(app.page.getByTestId("docs-squad-select")).toHaveCount(0);
     await expect(app.page.getByText(title, { exact: true })).toHaveCount(0);
   });
 });

@@ -107,7 +107,7 @@ test.describe("Suite B · Ciclo de vida de partidas", () => {
     await loginAs("admin_mad");
     const title = `QA MAD · Partida editada ${Date.now()}`;
     await app.openTab("Partidas");
-    await app.eventCard("QA MAD · Partida a editar").getByRole("button", { name: "Editar", exact: true }).click();
+    await app.eventEditButton(app.eventCard("QA MAD · Partida a editar")).click();
 
     const form = app.modal.filter({ has: app.page.getByRole("heading", { name: "Editar partida" }) });
     await form.getByPlaceholder("Ej. Dominical CQB / Operación Tormenta").fill(title);
@@ -135,9 +135,9 @@ test.describe("Suite B · Ciclo de vida de partidas", () => {
     await app.openTab("Partidas");
     const card = app.eventCard("QA MAD · Partida a eliminar");
 
-    await card.getByRole("button", { name: "Eliminar", exact: true }).click();
+    await app.eventDeleteButton(card).click();
     // Primer clic solo muestra la confirmación; el botón pasa a "Cancelar".
-    await expect(card.getByRole("button", { name: "Cancelar", exact: true })).toBeVisible();
+    await expect(app.eventDeleteButton(card)).toHaveText("Cancelar");
     await card.getByRole("button", { name: "Confirmar eliminar partida" }).click();
 
     await app.expectToast("Partida eliminada.");
@@ -156,8 +156,8 @@ test.describe("Suite B · Ciclo de vida de partidas", () => {
     const card = app.eventCard("QA MAD · Partida cerrada");
 
     await expect(card.getByRole("button", { name: "Ver acta / Desbloquear" })).toBeVisible();
-    await expect(card.getByRole("button", { name: "Editar", exact: true })).toHaveCount(0);
-    await expect(card.getByRole("button", { name: "Eliminar", exact: true })).toHaveCount(0);
+    await expect(app.eventEditButton(card)).toHaveCount(0);
+    await expect(app.eventDeleteButton(card)).toHaveCount(0);
   });
 
   test("TC-B09 Un jugador no puede pedir el desbloqueo de un acta", async ({ app, loginAs }) => {

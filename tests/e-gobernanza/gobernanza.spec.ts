@@ -18,10 +18,9 @@ test.describe("Suite E · Gobernanza FOE", () => {
     await app.page.getByRole("button", { name: "+ Nueva votación" }).click();
 
     const form = app.page.locator("form").filter({ hasText: "Convocar votación en Junta Directiva" });
-    const select = (option: string) => form.locator("select", { has: app.page.locator("option", { hasText: option }) });
-    await select("Votación de sanción a operador").selectOption({ label: "Votación de sanción a operador" });
-    await select("QA Jugador FOE").selectOption({ label: "QA Jugador FOE" });
-    await select("Falta Grave").selectOption("grave");
+    await app.chooseOption(form.getByTestId("foe-poll-topic-select"), "Votación de sanción a operador");
+    await app.chooseOption(form.getByTestId("foe-sanction-target-select"), "QA Jugador FOE");
+    await app.chooseOption(form.getByTestId("foe-sanction-severity-select"), "Falta Grave");
     await form.getByPlaceholder(/Art\. 51\.i/).fill("Art. 36.2 — Baja < 48h");
     await form.getByPlaceholder(/Explica los hechos/).fill("Baja sin aviso en la partida del domingo (E2E).");
     await form.getByRole("button", { name: "Publicar votación" }).click();

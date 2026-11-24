@@ -41,7 +41,7 @@ test.describe("Suite D · Asistencia", () => {
     await expect(row.getByRole("checkbox")).toBeChecked(); // sigue marcada al guardar
     await app.modal.getByRole("button", { name: "Guardar asistencia y bloquear partida" }).click();
     await app.expectToast("Asistencia guardada y partida bloqueada.");
-    await app.modal.getByRole("button", { name: "Cerrar", exact: true }).click();
+    await app.modal.getByTestId("event-detail-footer-close-btn").click();
 
     await app.openTab("Jugadores");
     await expect(app.attendanceOf("QA Jugador FOE")).toContainText("57% (2/3,5)");

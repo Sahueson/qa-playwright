@@ -1,7 +1,7 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
-// Page object de Tactical Calendar. La app solo tiene data-testid en el login QA;
-// el resto se localiza por rol y texto visibles, como lo haría un usuario.
+// Page object de Tactical Calendar. Los botones de acción y los desplegables propios (TacticalSelect) se
+// localizan por data-testid (sus aria-label llevan el nombre de la partida/jugador); el resto, por rol y texto visibles.
 export class AppPage {
   readonly nav: Locator;
   readonly newEventButton: Locator;
@@ -13,8 +13,8 @@ export class AppPage {
   constructor(readonly page: Page) {
     this.nav = page.getByRole("navigation", { name: "Navegación principal" });
     this.newEventButton = page.getByRole("button", { name: "+ Nueva partida" });
-    this.logoutButton = page.locator(".app-header").getByRole("button", { name: "Salir" });
-    this.profileButton = page.getByTitle("Editar mi ficha de operador");
+    this.logoutButton = page.locator(".app-header").getByTestId("header-logout-btn");
+    this.profileButton = page.locator(".app-header").getByTestId("header-profile-btn");
     this.toast = page.locator(".tactical-toast");
     this.modal = page.locator(".modal");
   }
@@ -135,10 +135,35 @@ export class AppPage {
 
   // Formulario de inscripción del detalle de partida.
   get registrationGear() {
-    return this.modal.locator(".inscribir-form select").nth(0);
+    return this.modal.getByTestId("event-register-team-select");
   }
   get registrationRole() {
-    return this.modal.locator(".inscribir-form select").nth(1);
+    return this.modal.getByTestId("event-register-role-select");
+  }
+
+  // ---------- Desplegables propios (TacticalSelect) ----------
+  // La lista de opciones solo existe con el menú abierto: se abre, se elige y se cierra solo.
+  async chooseOption(trigger: Locator, option: string) {
+    await trigger.click();
+    await this.page.getByRole("listbox").getByRole("option").filter({ hasText: option }).first().click();
+  }
+
+  // Textos de las opciones de un desplegable (lo abre, los lee y lo cierra sin elegir).
+  async dropdownOptions(trigger: Locator) {
+    await trigger.click();
+    const options = this.page.getByRole("listbox").getByRole("option");
+    await expect(options.first()).toBeVisible();
+    const texts = (await options.allInnerTexts()).map((t) => t.trim());
+    await trigger.click();
+    return texts;
+  }
+
+  // Botones de la tarjeta de partida: su nombre accesible incluye el título, así que se usa el data-testid.
+  eventEditButton(card: Locator) {
+    return card.locator('[data-testid^="event-edit-btn-"]');
+  }
+  eventDeleteButton(card: Locator) {
+    return card.locator('[data-testid^="event-delete-btn-"]');
   }
 
   async expectToast(text: string | RegExp) {

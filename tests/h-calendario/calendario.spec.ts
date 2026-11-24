@@ -61,14 +61,14 @@ test.describe("Suite H · Calendario y fechas sin partida", () => {
   test("TC-H03 Un admin de un solo equipo no puede marcar fechas para ambos", async ({ app, loginAs }) => {
     await loginAs("admin_mad");
     const form = await openBlackoutForm(app);
-    const options = await form.locator("select option").allInnerTexts();
+    const options = await app.dropdownOptions(form.getByTestId("blackout-squad-select"));
     expect(options).toEqual(["MAD Irregulars"]);
   });
 
   test("TC-H04 El super admin puede marcar fechas para ambos equipos", async ({ app, loginAs }) => {
     await loginAs("superadmin");
     const form = await openBlackoutForm(app);
-    await expect(form.locator("select option")).toHaveText([
+    expect(await app.dropdownOptions(form.getByTestId("blackout-squad-select"))).toEqual([
       "MAD Irregulars", "FOE", "Ambos equipos (MAD Irregulars y FOE)",
     ]);
     // Y ve las fechas de los dos equipos.

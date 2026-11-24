@@ -14,7 +14,7 @@ test.describe("Suite C · Inscripciones", () => {
     await loginAs("junta2");
     await app.openEvent("QA FOE · Inscripción abierta");
 
-    await expect(app.registrationGear).toHaveValue("Tiger Stripe");
+    await expect(app.registrationGear).toHaveText("Tiger Stripe");
     await expect(app.modal.getByText("No tienes «Tiger Stripe» marcada en tu ficha")).toBeVisible();
 
     await app.modal.getByRole("button", { name: "Apuntarse" }).click();
@@ -28,8 +28,8 @@ test.describe("Suite C · Inscripciones", () => {
     await loginAs("junta2"); // ficha: Árido + Médico
     await app.openEvent("QA FOE · MilSim próxima"); // sin equipación recomendada
 
-    await expect(app.registrationGear).toHaveValue("Árido");
-    await expect(app.registrationRole).toHaveValue("medico");
+    await expect(app.registrationGear).toContainText("Árido");
+    await expect(app.registrationRole).toContainText("Médico");
     await expect(app.modal.getByText(/No tienes «.*» marcada/)).toBeHidden();
   });
 
