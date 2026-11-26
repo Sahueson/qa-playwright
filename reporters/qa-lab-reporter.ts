@@ -35,10 +35,13 @@ class QALabReporter implements Reporter {
   // solo cuenta el resultado final (un test "flaky" que acaba pasando cuenta como passed).
   private tests = new Map<string, NormalizedTest>();
   private pending: Promise<unknown>[] = [];
+  private events: Promise<unknown> = Promise.resolve();
 
   private send(type: string, message: string) {
     if (!shared) return;
-    this.pending.push(shared.sendEvent(type, message).catch(() => {}));
+    // En cola: los eventos se insertan en el orden en que ocurren (en paralelo podían cruzarse).
+    this.events = this.events.then(() => shared.sendEvent(type, message)).catch(() => {});
+    this.pending.push(this.events);
   }
 
   // Total de tests que se van a ejecutar: la web lo usa para la barra de progreso en vivo.
