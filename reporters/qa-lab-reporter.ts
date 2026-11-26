@@ -1,4 +1,4 @@
-import type { Reporter, TestCase, TestResult } from "@playwright/test/reporter";
+import type { FullConfig, Reporter, Suite, TestCase, TestResult } from "@playwright/test/reporter";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -41,6 +41,11 @@ class QALabReporter implements Reporter {
     this.pending.push(shared.sendEvent(type, message).catch(() => {}));
   }
 
+  // Total de tests que se van a ejecutar: la web lo usa para la barra de progreso en vivo.
+  onBegin(_config: FullConfig, suite: Suite) {
+    this.send("plan", String(suite.allTests().length));
+  }
+
   onTestBegin(test: TestCase, result: TestResult) {
     this.send("test_started", result.retry ? `${test.title} (reintento ${result.retry})` : test.title);
   }
@@ -77,6 +82,7 @@ class QALabReporter implements Reporter {
       );
     }
     this.send(status === "failed" ? "test_failed" : status === "skipped" ? "test_skipped" : "test_passed", test.title);
+    if (entry.error) this.send("log", `   ↳ ${entry.error}`);
   }
 
   async onEnd() {
