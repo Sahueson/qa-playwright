@@ -13,9 +13,14 @@ export default async function globalSetup() {
   const { acquireStagingLock } = require(path.resolve(__dirname, "shared/reset-staging/lock.js"));
   const { reset } = require(path.resolve(__dirname, "shared/reset-staging/reset.js"));
 
+  // Pantalla en vivo de la web (no hace nada sin RUN_ID).
+  const live = require(path.resolve(__dirname, "shared/live-events.js"));
+  live.emit("log", "Reservando el entorno de pruebas (solo admite una ejecución a la vez)");
   const release: () => Promise<unknown> = await acquireStagingLock({ log });
   try {
+    live.emit("log", "Restaurando los datos de prueba");
     await reset({ log });
+    live.emit("log", "Entorno listo: arrancan las pruebas");
   } catch (e) {
     await release();
     throw e;
